@@ -1,0 +1,77 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environment directories
+env/
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# VS Code settings
+.vscode/
+
+# Pytest cache files
+.pytest_cache/
+
+# Mypy cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# macOS files
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Uvicorn logs
+*.uvicorn.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+*.cover
+*.py,cover
+.cache
+coverage.xml
+*.cover
+.hypothesis/
+
+# Test results
+junit-xml/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# Temporary files and folders
+*.bak
+*.swp
+*.temp
+*.tmp
