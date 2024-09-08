@@ -37,11 +37,11 @@ class PasswordFormatChecker:
             bool: True if the password is valid, False otherwise.
 
         Raises:
-            UncaughtPasswordFormatCheckingException: If an exception is not caught.
+            None
         """
         try:
             return self._is_valid_format()
-        except Exception:
+        except PasswordFormatValidationException:
             return False
 
     def _is_valid_format(self) -> bool:
