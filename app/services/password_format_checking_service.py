@@ -1,6 +1,6 @@
 import re
 
-from src.main.excpetions.account_signup_excpetions.password_format_valdation_exception import PasswordFormatValidationException
+from app.excpetions.account_signup_excpetions.password_format_valdation_exception import PasswordFormatValidationException
 
 
 class PasswordFormatChecker:

@@ -1,9 +1,9 @@
 from typing import Optional, Any
 
-from src.main.services.email_format_checking_service import EmailFormatChecker
-from src.main.services.password_format_checking_service import PasswordFormatChecker
-from src.main.services.birthday_format_checking_service import BirthdayFormatChecker
-from src.main.account_signup.producthunt_signup import ProducthuntSignup
+from app.services.email_format_checking_service import EmailFormatChecker
+from app.services.password_format_checking_service import PasswordFormatChecker
+from app.services.birthday_format_checking_service import BirthdayFormatChecker
+from app.core.account_signup.producthunt_signup import ProducthuntSignup
 
 
 class SignupManager:
