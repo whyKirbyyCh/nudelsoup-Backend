@@ -14,7 +14,7 @@ click==8.1.7
 cloudpathlib==0.19.0
 colorama==0.4.6
 confection==0.1.5
-cryptography==43.0.0
+cryptography==43.0.1
 cssselect==1.2.0
 curated-tokenizers==0.0.9
 curated-transformers==0.1.1
