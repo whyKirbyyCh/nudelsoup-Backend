@@ -3,6 +3,7 @@ from openai import OpenAI
 from app.config.logger_config import Logger
 from dataclasses import dataclass
 from dotenv import load_dotenv
+from app.excpetions.post_creation_exception.openai_completion_exception import OpenAICompletionException
 
 
 @dataclass
@@ -27,6 +28,7 @@ class OpenAIConnection:
         load_dotenv(override=True)
 
         self.api_key: str = os.getenv("OPENAI_API_KEY")
+
         if not self.api_key:
             raise ValueError("OpenAI API key is not set in the environment variables.")
 
@@ -57,11 +59,9 @@ class OpenAIConnection:
                 ],
             )
 
-            self.logger.debug(f"OpenAI API response: {response}")
-
             return response.choices[0].message.content
         except Exception as ex:
-            self.logger.error(f"OpenAI API error: {ex}")
+            raise OpenAICompletionException(f"An error occurred while generating the post: {ex}")
 
 
 if __name__ == "__main__":
