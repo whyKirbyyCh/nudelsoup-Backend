@@ -57,6 +57,7 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while collecting the post setups.
         """
         try:
+            company_info = self.order["company_info"]
             for service_name, service_details in self.order.items():
                 self.logger.info(f"Collecting post setups for service: {service_name}, order: {service_details}")
 
