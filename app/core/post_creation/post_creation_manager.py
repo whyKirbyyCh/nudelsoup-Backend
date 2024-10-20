@@ -1,6 +1,10 @@
 from app.config.logger_config import Logger
 from app.excpetions.post_creation_exception.openai_completion_exception import OpenAICompletionException
 from app.excpetions.post_creation_exception.posts_creation_exception import PostsCreationException
+from app.static.system_prompts.standard_system_prompt import StandardSystemPrompt
+from app.static.user_prompts.standard_user_prompt import StandardUserPrompt
+from app.core.post_creation.openai_connection import OpenAIConnection
+from app.models.order import Order
 from typing import Tuple, Dict
 import traceback
 
@@ -8,7 +12,7 @@ import traceback
 class PostCreationManager:
     """A Class which manages the post creation process."""
 
-    def __init__(self, request_id: str, order: Dict[str, Dict[str, str]]) -> None:
+    def __init__(self, request_id: str, order: Order) -> None:
         """
         Initializes the PostCreationManager instance.
 
@@ -17,9 +21,10 @@ class PostCreationManager:
             order (Dict[str, Dict[str, str]]): The order details.
         """
         self.request_id: str = request_id
-        self.order: Dict[str, Dict[str, str]] = order
-
-        self.created_posts: Dict[str, Dict[str, str]] = {}
+        self.order: Dict[str, Dict[str, Dict[str, str]]] = order.order_details
+        self.services: Dict[str, bool] = order.services
+        self.company_info: Dict[str, Dict[str, str]] = order.company_info
+        self.product_info: Dict[str, Dict[str, str]] = order.product_info
 
         self.logger = Logger.get_logger()
 
@@ -35,8 +40,25 @@ class PostCreationManager:
         """
         self.logger.info(f"Handling post creation for request: {self.request_id}")
 
+        created_posts: Dict[str, Dict[str, str]] = {}
+
+        standard_system_prompt: str = StandardSystemPrompt(self.company_info).get_system_prompt()
+        standard_user_prompt: str = StandardUserPrompt(self.product_info).get_user_prompt()
+
         try:
-            post_setups: Dict[str, Tuple[str, str]] = self._get_post_setups()
+            post_setups: Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]] = self._create_post_setups()
+
+            for service, is_enabled in self.services.items():
+                if is_enabled:
+                    system_prompt: str = standard_system_prompt + post_setups[0][service][0] + post_setups[0][service][1]
+                    user_prompt: str = standard_user_prompt + post_setups[1][service][0] + post_setups[1][service][1]
+
+                    response: str = OpenAIConnection().create_post(user_prompt=user_prompt, system_prompt=system_prompt)
+
+                    # TODO: parse the response into title and content
+                    created_posts[service] = {"title": response, "content": response}
+
+            return created_posts
 
         except OpenAICompletionException as OCE:
             self.logger.error(f"Error with OpenAI API: {OCE}")
@@ -46,7 +68,7 @@ class PostCreationManager:
             self.logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
             raise PostsCreationException("An unexpected error occurred.") from e
 
-    def _get_post_setups(self) -> Dict[str, Tuple[str, str]]:
+    def _create_post_setups(self) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]]:
         """
         Returns the post setups for each service.
 
@@ -57,12 +79,46 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while collecting the post setups.
         """
         try:
-            for service_name, service_details in self.order.items():
-                self.logger.info(f"Collecting post setups for service: {service_name}, order: {service_details}")
+            combined_system_prompt: Dict[str, Tuple[str, str, str]] = self._combine_prompt_dict(
+                dict1=self.order["system"]["SSCOP"],
+                dict2=self.order["system"]["CPOP"]
+            )
+            combined_user_prompt: Dict[str, Tuple[str, str, str]] = self._combine_prompt_dict(
+                dict1=self.order["user"]["SSPOP"],
+                dict2=self.order["user"]["PPSOP"]
+            )
+
+            return combined_system_prompt, combined_user_prompt
 
         except Exception as e:
             self.logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
-            raise PostsCreationException("An unexpected error occurred.") from e
+            raise PostsCreationException("An unexpected error occurred in the prompt setup process.") from e
+
+    @staticmethod
+    def _combine_prompt_dict(dict1: Dict[str, str], dict2: Dict[str, str]) -> Dict[str, Tuple[str, str]]:
+        """
+        Combines two prompt dictionaries.
+
+        Args:
+            dict1 (Dict[str, str]): The first dictionary.
+            dict2 (Dict[str, str]): The second dictionary.
+
+        Returns:
+            Dict[str, Tuple[str, str]]: The combined dictionary.
+        """
+
+        combined: Dict[str, Tuple[str, str]]
+
+        if "all" in dict1 and "all" in dict2:
+            combined = {"all": (dict1["all"][0], dict2["all"][0])}
+        elif "all" in dict1:
+            combined = {key: (dict1["all"][0], dict2[key]) for key in dict2}
+        elif "all" in dict2:
+            combined = {key: (dict1[key], dict2["all"][0]) for key in dict1}
+        else:
+            combined = {key: (dict1[key], dict2[key]) for key in dict1.keys() & dict2.keys()}
+
+        return combined
 
     def get_posts(self) -> Dict[str, Dict[str, str]]:
         """
@@ -75,8 +131,3 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while getting the created posts.
         """
         return self._start_post_creation()
-
-
-if __name__ == "__main__":
-    post_creation_manager = PostCreationManager(request_id="123", order={"reddit": {"type": "text", "user_prompt": "What is the meaning of life?", "system_prompt": "You are a helpful assistant."}, "twitter": {"type": "text", "user_prompt": "What is the meaning of life?", "system_prompt": "You are a helpful assistant."}})
-    results = post_creation_manager.get_posts()
