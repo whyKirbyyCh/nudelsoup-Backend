@@ -1,14 +1,87 @@
-from fastapi import FastAPI
-import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Extra, model_validator
+from typing import Dict
+from app.services.rest.user_authentication_service import UserAuthenticationService
+from app.excpetions.rest.user_authentication_excpetion import UserAuthenticationException
+from app.excpetions.rest.user_limits_exception import UserLimitsException
+from app.config.logger_config import Logger
+from app.models.order import Order
+from app.core.post_creation.post_creation_manager import PostCreationManager
+import traceback
+
 
 app = FastAPI()
+logger = Logger.get_logger()
 
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, World!"}
+class AccountInfo(BaseModel):
+    username: str
+    email: str
+    token: str
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str = None):
-    return {"item_id": item_id, "query": q}
+class CompanyInfo(BaseModel):
+    company_name: str
+    company_description: str
+    company_country: str
+    company_size: int
+    company_age: str
+    company_industry: str
+
+    class Config:
+        extra: str = Extra.allow
+
+    @model_validator(mode="before")
+    def check_additional_fields(cls, values):
+        for field in values:
+            if field in cls.model_fields:
+                continue
+            elif field.startswith("additional_"):
+                if not isinstance(values[field], str):
+                    raise ValueError(f"{field} must be a string")
+            else:
+                raise ValueError(
+                    f"Unexpected field: {field}. It must start with 'additional_' or be a defined model field.")
+        return values
+
+
+# TODO: complete this
+class ProductInfo(BaseModel):
+    product_name: str
+    product_description: str
+
+
+class RequestData(BaseModel):
+    ip: str
+    request_id: str
+    account_info: AccountInfo
+    company_info: CompanyInfo
+    product_info: ProductInfo
+    services: Dict[str, bool]
+
+
+@app.get("/api/get_posts")
+async def get_posts(data: RequestData):
+    try:
+        authentication: bool = UserAuthenticationService().authenticate_user(data.account_info.username, data.account_info.email, data.account_info.token)
+
+        if authentication:
+            order: Order = Order(services=data.services, company_info=data.company_info, product_info=data.product_info, SSCOP=False, CPOP=False, SSPOP=False, PPSOP=False)
+
+            post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_id, order=order)
+
+            response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
+        else:
+            raise UserAuthenticationException("User is not allowed to access this resource.")
+
+        return response
+
+    except UserAuthenticationException as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    except UserLimitsException as e:
+        raise HTTPException(status_code=429, detail=str(e))
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
