@@ -3,8 +3,10 @@ from app.excpetions.post_creation_exception.openai_completion_exception import O
 from app.excpetions.post_creation_exception.posts_creation_exception import PostsCreationException
 from app.static.system_prompts.standard_system_prompt import StandardSystemPrompt
 from app.static.user_prompts.standard_user_prompt import StandardUserPrompt
+from app.static.user_prompts.json_structure_prompt import JSONStructurePrompt
 from app.core.post_creation.openai_connection import OpenAIConnection
 from app.models.order import Order
+from app.services.post_creation.json_parsing_service import JSONParsingService
 from typing import Tuple, Dict
 import traceback
 
@@ -42,8 +44,11 @@ class PostCreationManager:
 
         created_posts: Dict[str, Dict[str, str]] = {}
 
+        json_parsing_service: JSONParsingService = JSONParsingService()
+
         standard_system_prompt: str = StandardSystemPrompt(self.company_info).get_system_prompt()
         standard_user_prompt: str = StandardUserPrompt(self.product_info).get_user_prompt()
+        json_structure_prompt: str = JSONStructurePrompt().get_structure_prompt()
 
         try:
             post_setups: Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]] = self._create_post_setups()
@@ -51,12 +56,12 @@ class PostCreationManager:
             for service, is_enabled in self.services.items():
                 if is_enabled:
                     system_prompt: str = standard_system_prompt + post_setups[0][service][0] + post_setups[0][service][1]
-                    user_prompt: str = standard_user_prompt + post_setups[1][service][0] + post_setups[1][service][1]
+                    user_prompt: str = standard_user_prompt + post_setups[1][service][0] + post_setups[1][service][1] + json_structure_prompt
 
                     response: str = OpenAIConnection().create_post(user_prompt=user_prompt, system_prompt=system_prompt)
 
-                    # TODO: parse the response into title and content
-                    created_posts[service] = {"title": response, "content": response}
+                    response: Tuple[str, str] = json_parsing_service.get_title_and_content(response)
+                    created_posts[service] = {"title": response[0], "content": response[1]}
 
             return created_posts
 
@@ -94,8 +99,7 @@ class PostCreationManager:
             self.logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
             raise PostsCreationException("An unexpected error occurred in the prompt setup process.") from e
 
-    @staticmethod
-    def _combine_prompt_dict(dict1: Dict[str, str], dict2: Dict[str, str]) -> Dict[str, Tuple[str, str]]:
+    def _combine_prompt_dict(self, dict1: Dict[str, str], dict2: Dict[str, str]) -> Dict[str, Tuple[str, str]]:
         """
         Combines two prompt dictionaries.
 
@@ -110,7 +114,7 @@ class PostCreationManager:
         combined: Dict[str, Tuple[str, str]]
 
         if "all" in dict1 and "all" in dict2:
-            combined = {"all": (dict1["all"][0], dict2["all"][0])}
+            combined = {key: (dict1["all"][0], dict2["all"][0]) for key, value in self.services.items() if value}
         elif "all" in dict1:
             combined = {key: (dict1["all"][0], dict2[key]) for key in dict2}
         elif "all" in dict2:
@@ -131,3 +135,14 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while getting the created posts.
         """
         return self._start_post_creation()
+
+
+if __name__ == "__main__":
+    re_id: str = "1"
+    todo: Order = Order(services={"reddit": True, "twitter": True}, company_info={"name": "nudelsoup"}, product_info={"name": "nudelsoup"}, SSCOP=False, CPOP=False, SSPOP=False, PPSOP=False)
+
+    post_creation_manager: PostCreationManager = PostCreationManager(request_id=re_id, order=todo)
+
+    createds_posts: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
+
+    print(createds_posts)
