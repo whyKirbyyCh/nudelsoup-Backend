@@ -99,8 +99,7 @@ class PostCreationManager:
             self.logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
             raise PostsCreationException("An unexpected error occurred in the prompt setup process.") from e
 
-    @staticmethod
-    def _combine_prompt_dict(dict1: Dict[str, str], dict2: Dict[str, str]) -> Dict[str, Tuple[str, str]]:
+    def _combine_prompt_dict(self, dict1: Dict[str, str], dict2: Dict[str, str]) -> Dict[str, Tuple[str, str]]:
         """
         Combines two prompt dictionaries.
 
@@ -115,7 +114,7 @@ class PostCreationManager:
         combined: Dict[str, Tuple[str, str]]
 
         if "all" in dict1 and "all" in dict2:
-            combined = {"all": (dict1["all"][0], dict2["all"][0])}
+            combined = {key: (dict1["all"][0], dict2["all"][0]) for key, value in self.services.items() if value}
         elif "all" in dict1:
             combined = {key: (dict1["all"][0], dict2[key]) for key in dict2}
         elif "all" in dict2:
@@ -136,3 +135,14 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while getting the created posts.
         """
         return self._start_post_creation()
+
+
+if __name__ == "__main__":
+    re_id: str = "1"
+    todo: Order = Order(services={"reddit": True, "twitter": True}, company_info={"name": "nudelsoup"}, product_info={"name": "nudelsoup"}, SSCOP=False, CPOP=False, SSPOP=False, PPSOP=False)
+
+    post_creation_manager: PostCreationManager = PostCreationManager(request_id=re_id, order=todo)
+
+    createds_posts: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
+
+    print(createds_posts)
