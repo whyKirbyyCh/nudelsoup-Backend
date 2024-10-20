@@ -85,12 +85,12 @@ class PostCreationManager:
         """
         try:
             combined_system_prompt: Dict[str, Tuple[str, str, str]] = self._combine_prompt_dict(
-                dict1=self.order["system"]["SSCOP"],
-                dict2=self.order["system"]["CPOP"]
+                dict1=self.order["system"]["sscop"],
+                dict2=self.order["system"]["cpop"]
             )
             combined_user_prompt: Dict[str, Tuple[str, str, str]] = self._combine_prompt_dict(
-                dict1=self.order["user"]["SSPOP"],
-                dict2=self.order["user"]["PPSOP"]
+                dict1=self.order["user"]["sspop"],
+                dict2=self.order["user"]["ppsop"]
             )
 
             return combined_system_prompt, combined_user_prompt
@@ -139,7 +139,7 @@ class PostCreationManager:
 
 if __name__ == "__main__":
     re_id: str = "1"
-    todo: Order = Order(services={"reddit": True, "twitter": True}, company_info={"name": "nudelsoup"}, product_info={"name": "nudelsoup"}, SSCOP=False, CPOP=False, SSPOP=False, PPSOP=False)
+    todo: Order = Order(services={"reddit": True, "twitter": True}, company_info={"name": "nudelsoup"}, product_info={"name": "nudelsoup"}, sscop=False, cpop=False, sspop=False, ppsop=False)
 
     post_creation_manager: PostCreationManager = PostCreationManager(request_id=re_id, order=todo)
 

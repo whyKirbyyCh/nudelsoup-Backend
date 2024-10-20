@@ -6,17 +6,17 @@ class Order:
     Class representing an order.
     """
 
-    def __init__(self, services: Dict[str, bool], company_info: Dict[str, Dict[str, str]], product_info: Dict[str, Dict[str, str]], SSCOP: bool = False, CPOP: bool = False, SSPOP: bool = False, PPSOP: bool = False) -> None:
+    def __init__(self, services: Dict[str, bool], company_info: Dict[str, Dict[str, str]], product_info: Dict[str, Dict[str, str]], sscop: bool = False, cpop: bool = False, sspop: bool = False, ppsop: bool = False) -> None:
         """
         Initializes the class with the company info and services.
 
         Args:
             company_info (Dict[str, Dict[str, str]]): The company information.
             product_info (Dict[str, Dict[str, str]]): The product information.
-            SSCOP (str): The Site Specific Company Optimised Prompt.
-            CPOP (str): The Company Profile Optimised Prompt.
-            SSPOP (str): The Site Specific Product Optimised Prompt.
-            PPSOP (str): The Product Profile Specific Optimised Prompt.
+            sscop (str): The Site Specific Company Optimised Prompt.
+            cpop (str): The Company Profile Optimised Prompt.
+            sspop (str): The Site Specific Product Optimised Prompt.
+            ppsop (str): The Product Profile Specific Optimised Prompt.
 
         Raises:
             ValueError: If the company info or product info is empty.
@@ -34,29 +34,29 @@ class Order:
         self.company_info: Dict[str, Dict[str, str]] = company_info
         self.product_info: Dict[str, Dict[str, str]] = product_info
 
-        if SSCOP:
-            self.SSCOP: Dict[str, str] = self._collect_SSCOP(company_info)
+        if sscop:
+            self.sscop: Dict[str, str] = self._collect_sscop(company_info)
         else:
-            self.SSCOP: Dict[str, str] = {"all": "No optimisations are wanted for this specific Site and this specific Company Profile."}
+            self.sscop: Dict[str, str] = {"all": "No optimisations are wanted with regard to the site and the company for this specific Site and this specific Company Profile."}
 
-        if CPOP:
-            self.CPOP: Dict[str, str] = self._collect_CPOP(company_info)
+        if cpop:
+            self.cpop: Dict[str, str] = self._collect_cpop(company_info)
         else:
-            self.CPOP: Dict[str, str] = {"all": "No optimisations are wanted for this specific Site and this specific Company Profile."}
+            self.cpop: Dict[str, str] = {"all": "No optimisations are wanted with regard to the company for this specific Site and this specific Company Profile."}
 
-        if SSPOP:
-            self.SSPOP: Dict[str, str] = self._collect_SSPOP(product_info)
+        if sspop:
+            self.sspop: Dict[str, str] = self._collect_sspop(product_info)
         else:
-            self.SSPOP: Dict[str, str] = {"all": "No optimisations are wanted for this specific Site and this specific Company Profile."}
+            self.sspop: Dict[str, str] = {"all": "No optimisations are wanted with regard to the product and the site for this specific Site and this specific Company Profile."}
 
-        if PPSOP:
-            self.PPSOP: Dict[str, str] = self._collect_PPSOP(product_info)
+        if ppsop:
+            self.ppsop: Dict[str, str] = self._collect_ppsop(product_info)
         else:
-            self.PPSOP: Dict[str, str] = {"all": "No optimisations are wanted for this specific Site and this specific Company Profile."}
+            self.ppsop: Dict[str, str] = {"all": "No optimisations are wanted with regard to the product for this specific Site and this specific Company Profile."}
 
-        self.order_details: Dict[str, Dict[str, Dict[str, str]]] = {"system": {"SSCOP": self.SSCOP, "CPOP": self.CPOP}, "user": {"SSPOP": self.SSPOP, "PPSOP": self.PPSOP}}
+        self.order_details: Dict[str, Dict[str, Dict[str, str]]] = {"system": {"sscop": self.sscop, "cpop": self.cpop}, "user": {"sspop": self.sspop, "ppsop": self.ppsop}}
 
-    def _collect_SSCOP(self, company_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    def _collect_sscop(self, company_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
         """
         Collects the Site Specific Company Optimised Prompt.
 
@@ -66,17 +66,17 @@ class Order:
         Returns:
             str: The Site Specific Company Optimised Prompt.
         """
-        SSCOP: Dict[str, str] = {}
+        sscop: Dict[str, str] = {}
 
         for service, value in self.services.items():
             if value:
-                SSCOP[service] = "No optimisation has been found for this specific Site and this specific Company Profile."
+                sscop[service] = "No optimisation has been found with regard to the site and the company for this specific Site and this specific Company Profile."
             else:
-                SSCOP[service] = "No optimisation is wanted for this specific Site and this specific Company Profile."
+                sscop[service] = "No optimisations are wanted with regard to the site and the company for this specific Site and this specific Company Profile."
 
-        return SSCOP
+        return sscop
 
-    def _collect_CPOP(self, company_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    def _collect_cpop(self, company_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
         """
         Collects the Company Profile Optimised Prompt.
 
@@ -86,17 +86,17 @@ class Order:
         Returns:
             str: The Company Profile Optimised Prompt.
         """
-        CPOP: Dict[str, str] = {}
+        cpop: Dict[str, str] = {}
 
         for service, value in self.services.items():
             if value:
-                CPOP[service] = "No optimisation has been found for this specific Site and this specific Company Profile."
+                cpop[service] = "No optimisation has been found with regard to the company for this specific Site and this specific Company Profile."
             else:
-                CPOP[service] = "No optimisation is wanted for this specific Site and this specific Company Profile."
+                cpop[service] = "No optimisations are wanted with regard to the company for this specific Site and this specific Company Profile."
 
-        return CPOP
+        return cpop
 
-    def _collect_SSPOP(self, product_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    def _collect_sspop(self, product_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
         """
         Collects the Site Specific Product Optimised Prompt.
 
@@ -106,17 +106,17 @@ class Order:
         Returns:
             str: The Site Specific Product Optimised Prompt.
         """
-        SSPOP: Dict[str, str] = {}
+        sspop: Dict[str, str] = {}
 
         for service, value in self.services.items():
             if value:
-                SSPOP[service] = "No optimisation has been found for this specific Site and this specific Company Profile."
+                sspop[service] = "No optimisation has been found with regard to the product and the site for this specific Site and this specific Company Profile."
             else:
-                SSPOP[service] = "No optimisation is wanted for this specific Site and this specific Company Profile."
+                sspop[service] = "No optimisations are wanted with regard to the product and the site for this specific Site and this specific Company Profile."
 
-        return SSPOP
+        return sspop
 
-    def _collect_PPSOP(self, product_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    def _collect_ppsop(self, product_info: Dict[str, Dict[str, str]]) -> Dict[str, str]:
         """
         Collects the Product Profile Specific Optimised Prompt.
 
@@ -126,13 +126,13 @@ class Order:
         Returns:
             str: The Product Profile Specific Optimised Prompt.
         """
-        PPSOP: Dict[str, str] = {}
+        ppsop: Dict[str, str] = {}
 
         for service, value in self.services.items():
             if value:
-                PPSOP[
-                    service] = "No optimisation has been found for this specific Site and this specific Company Profile."
+                ppsop[
+                    service] = "No optimisation has been found with regard to the product for this specific Site and this specific Company Profile."
             else:
-                PPSOP[service] = "No optimisation is wanted for this specific Site and this specific Company Profile."
+                ppsop[service] = "No optimisations are wanted with regard to the product for this specific Site and this specific Company Profile."
 
-        return PPSOP
+        return ppsop
