@@ -13,7 +13,7 @@ class StandardSystemPrompt:
         """
         self.company_info: Dict[str, str] = company_info
 
-    def get_user_prompt(self) -> str:
+    def get_system_prompt(self) -> str:
         """
         Returns the user prompt for the standard user.
 
