@@ -21,67 +21,7 @@ class SignupManager:
             name (str): The name to be used in the account creation process.
             surname (str): The surname to be used in the account creation process.
             birthdate (str): The birthdate to be used in the account creation process.
-
-        Returns:
-            None
-
-        Raises:
-            TypeError: If any of the arguments are not of the correct type.
-            ValueError: If any of the arguments are not of the correct value.
         """
-        if not services:
-            raise ValueError("services must not be empty")
-
-        if not isinstance(services, list):
-            raise TypeError("services must be a list")
-
-        if not all(isinstance(service, str) for service in services):
-            raise TypeError("services must be a list of strings")
-
-        if not username:
-            raise ValueError("username must not be empty")
-
-        if not isinstance(username, str):
-            raise TypeError("username must be a string")
-
-        if not email:
-            raise ValueError("email must not be empty")
-
-        if not isinstance(email, str):
-            raise TypeError("email must be a string")
-
-        if not password:
-            raise ValueError("password must not be empty")
-
-        if not isinstance(password, str):
-            raise TypeError("password must be a string")
-
-        if not name:
-            raise ValueError("name must not be empty")
-
-        if not isinstance(name, str):
-            raise TypeError("name must be a string")
-
-        if not surname:
-            raise ValueError("surname must not be empty")
-
-        if not isinstance(surname, str):
-            raise TypeError("surname must be a string")
-
-        if not birthdate:
-            raise ValueError("birthdate must not be empty")
-
-        if not isinstance(birthdate, str):
-            raise TypeError("birthdate must be a string")
-
-        if "producthunt" in services:
-            if not gmail_credentials:
-                raise ValueError("gmail_credentials must not be empty")
-            if not isinstance(gmail_credentials, dict):
-                raise TypeError("gmail_credentials must be a dictionary")
-            if not all(key in gmail_credentials for key in ["username", "password"]) or not all(key in gmail_credentials for key in ["email", "password"]):
-                raise ValueError("gmail_credentials must contain 'username' and 'password' or 'email' and 'password' keys")
-
         self.services: list[str] = services
         self.username: str = username
         self.email: str = email
@@ -112,7 +52,7 @@ class SignupManager:
 
         for service in self.services:
             if service == "producthunt":
-                self.serviceObjects["producthunt"] = ProducthuntSignup(self.username, self.email, self.password, self.name, self.surname, self.birthdate)
+                self.serviceObjects["producthunt"] = ProducthuntSignup(self.username, self.email, self.password, self.name, self.surname)
                 self.serviceCredentials["producthunt"] = {"username": self.gmail_credentials["username"], "password": self.gmail_credentials["password"], "email": self.email}
                 self.serviceObjects["producthunt"].create_account()
             else:
