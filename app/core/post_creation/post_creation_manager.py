@@ -3,8 +3,10 @@ from app.excpetions.post_creation_exception.openai_completion_exception import O
 from app.excpetions.post_creation_exception.posts_creation_exception import PostsCreationException
 from app.static.system_prompts.standard_system_prompt import StandardSystemPrompt
 from app.static.user_prompts.standard_user_prompt import StandardUserPrompt
+from app.static.user_prompts.json_structure_prompt import JSONStructurePrompt
 from app.core.post_creation.openai_connection import OpenAIConnection
 from app.models.order import Order
+from app.services.post_creation.json_parsing_service import JSONParsingService
 from typing import Tuple, Dict
 import traceback
 
@@ -42,8 +44,11 @@ class PostCreationManager:
 
         created_posts: Dict[str, Dict[str, str]] = {}
 
+        json_parsing_service: JSONParsingService = JSONParsingService()
+
         standard_system_prompt: str = StandardSystemPrompt(self.company_info).get_system_prompt()
         standard_user_prompt: str = StandardUserPrompt(self.product_info).get_user_prompt()
+        json_structure_prompt: str = JSONStructurePrompt().get_structure_prompt()
 
         try:
             post_setups: Tuple[Dict[str, Tuple[str, str]], Dict[str, Tuple[str, str]]] = self._create_post_setups()
@@ -51,12 +56,12 @@ class PostCreationManager:
             for service, is_enabled in self.services.items():
                 if is_enabled:
                     system_prompt: str = standard_system_prompt + post_setups[0][service][0] + post_setups[0][service][1]
-                    user_prompt: str = standard_user_prompt + post_setups[1][service][0] + post_setups[1][service][1]
+                    user_prompt: str = standard_user_prompt + post_setups[1][service][0] + post_setups[1][service][1] + json_structure_prompt
 
                     response: str = OpenAIConnection().create_post(user_prompt=user_prompt, system_prompt=system_prompt)
 
-                    # TODO: parse the response into title and content
-                    created_posts[service] = {"title": response, "content": response}
+                    response: Tuple[str, str] = json_parsing_service.get_title_and_content(response)
+                    created_posts[service] = {"title": response[0], "content": response[1]}
 
             return created_posts
 
