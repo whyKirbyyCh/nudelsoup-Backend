@@ -92,7 +92,7 @@ async def get_posts(request: Request, data: RequestData):
         raise HTTPException(status_code=401, detail=str(e)) from e
 
     except UserLimitsException as e:
-        raise HTTPException(status_code=429, detail=str(e)) from e
+        raise HTTPException(status_code=403, detail=str(e)) from e
 
     except DBConnectionException as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
