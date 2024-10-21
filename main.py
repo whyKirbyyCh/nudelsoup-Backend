@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, model_validator
 from typing import Dict
 from app.services.rest.user_authentication_service import UserAuthenticationService
+from app.services.rest.user_limit_check_service import UserLimitCheckService
 from app.excpetions.rest.user_authentication_excpetion import UserAuthenticationException
+from app.excpetions.db.db_connection_exception import DBConnectionException
 from app.excpetions.rest.user_limits_exception import UserLimitsException
 from app.config.logger_config import Logger
 from app.models.order import Order
@@ -64,14 +66,18 @@ class RequestData(BaseModel):
 
 
 @app.get("/api/get_posts")
-@rate_limit_middleware.limiter.limit("1 per 5 minutes")
+@rate_limit_middleware.limiter.limit("10 per 5 minutes")
 async def get_posts(request: Request, data: RequestData):
     try:
         authentication: bool = UserAuthenticationService().authenticate_user(
             data.account_info.username, data.account_info.email, data.account_info.token
         )
 
-        if authentication:
+        limitcheck: bool = UserLimitCheckService().check_user_limit(
+            data.account_info.user_id
+        )
+
+        if authentication and limitcheck:
             order: Order = Order(services=data.services, company_info=data.company_info.dict(), product_info=data.product_info, sscop=False, cpop=False, sspop=False, ppsop=False)
 
             post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_id, order=order)
@@ -83,12 +89,14 @@ async def get_posts(request: Request, data: RequestData):
             raise UserAuthenticationException("User is not allowed to access this resource.")
 
     except UserAuthenticationException as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail=str(e)) from e
 
     except UserLimitsException as e:
-        raise HTTPException(status_code=429, detail=str(e))
+        raise HTTPException(status_code=429, detail=str(e)) from e
+
+    except DBConnectionException as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
-
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e

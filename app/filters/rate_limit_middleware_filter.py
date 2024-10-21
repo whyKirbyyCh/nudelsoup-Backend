@@ -8,7 +8,7 @@ from typing import Optional
 
 class RateLimitMiddleware:
     """ Middleware class to add rate limiting to the FastAPI API. """
-    def __init__(self, app, default_limit: Optional[str] = "1 per 5 minutes") -> None:
+    def __init__(self, app, default_limit: Optional[str] = "10 per 5 minutes") -> None:
         """
         Initialize the RateLimitMiddleware class.
 
