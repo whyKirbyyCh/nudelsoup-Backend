@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Extra, model_validator
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, model_validator
 from typing import Dict
 from app.services.rest.user_authentication_service import UserAuthenticationService
 from app.excpetions.rest.user_authentication_excpetion import UserAuthenticationException
@@ -8,13 +8,16 @@ from app.config.logger_config import Logger
 from app.models.order import Order
 from app.core.post_creation.post_creation_manager import PostCreationManager
 import traceback
+from app.filters.rate_limit_middleware_filter import RateLimitMiddleware
 
 
 app = FastAPI()
 logger = Logger.get_logger()
+rate_limit_middleware = RateLimitMiddleware(app, default_limit="1 per 5 minutes")
 
 
 class AccountInfo(BaseModel):
+    user_id: str
     username: str
     email: str
     token: str
@@ -29,7 +32,7 @@ class CompanyInfo(BaseModel):
     company_industry: str
 
     class Config:
-        extra: str = Extra.allow
+        extra = "allow"
 
     @model_validator(mode="before")
     def check_additional_fields(cls, values):
@@ -61,20 +64,23 @@ class RequestData(BaseModel):
 
 
 @app.get("/api/get_posts")
-async def get_posts(data: RequestData):
+@rate_limit_middleware.limiter.limit("1 per 5 minutes")
+async def get_posts(request: Request, data: RequestData):
     try:
-        authentication: bool = UserAuthenticationService().authenticate_user(data.account_info.username, data.account_info.email, data.account_info.token)
+        authentication: bool = UserAuthenticationService().authenticate_user(
+            data.account_info.username, data.account_info.email, data.account_info.token
+        )
 
         if authentication:
-            order: Order = Order(services=data.services, company_info=data.company_info, product_info=data.product_info, SSCOP=False, CPOP=False, SSPOP=False, PPSOP=False)
+            order: Order = Order(services=data.services, company_info=data.company_info.dict(), product_info=data.product_info, sscop=False, cpop=False, sspop=False, ppsop=False)
 
             post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_id, order=order)
 
             response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
+
+            return response
         else:
             raise UserAuthenticationException("User is not allowed to access this resource.")
-
-        return response
 
     except UserAuthenticationException as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -85,3 +91,4 @@ async def get_posts(data: RequestData):
     except Exception as e:
         logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+
