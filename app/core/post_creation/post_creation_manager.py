@@ -143,6 +143,6 @@ if __name__ == "__main__":
 
     post_creation_manager: PostCreationManager = PostCreationManager(request_id=re_id, order=todo)
 
-    createds_posts: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
+    created_posts2: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
 
-    print(createds_posts)
+    print(created_posts2)

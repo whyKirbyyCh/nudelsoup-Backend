@@ -54,15 +54,44 @@ class CompanyInfo(BaseModel):
 class ProductInfo(BaseModel):
     product_name: str
     product_description: str
+    product_business_model: str
+    product_type: str
+    product_market: str
+
+    class Config:
+        extra = "allow"
+
+    @model_validator(mode="before")
+    def check_additional_fields(cls, values):
+        for field in values:
+            if field in cls.model_fields:
+                continue
+            elif field.startswith("additional_"):
+                if not isinstance(values[field], str):
+                    raise ValueError(f"{field} must be a string")
+            else:
+                raise ValueError(
+                    f"Unexpected field: {field}. It must start with 'additional_' or be a defined model field.")
+        return values
+
+
+class RequestInfo(BaseModel):
+    ip: str
+    request_id: str
+    product_id: str
+    campaign_id: str
+    services: Dict[str, bool]
+    sscop: bool
+    cpop: bool
+    sspop: bool
+    ppsop: bool
 
 
 class RequestData(BaseModel):
-    ip: str
-    request_id: str
+    request_info: RequestInfo
     account_info: AccountInfo
     company_info: CompanyInfo
     product_info: ProductInfo
-    services: Dict[str, bool]
 
 
 @app.get("/api/get_posts")
@@ -78,9 +107,9 @@ async def get_posts(request: Request, data: RequestData):
         )
 
         if authentication and limitcheck:
-            order: Order = Order(services=data.services, company_info=data.company_info.dict(), product_info=data.product_info, sscop=False, cpop=False, sspop=False, ppsop=False)
+            order: Order = Order(services=data.request_info.services, company_info=data.company_info.dict(), product_info=data.product_info, sscop=data.request_info.sscop, cpop=data.request_info.cpop, sspop=data.request_info.sspop, ppsop=data.request_info.ppsop)
 
-            post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_id, order=order)
+            post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_info.request_id, order=order)
 
             response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
 
