@@ -108,7 +108,7 @@ async def get_posts(request: Request, data: RequestData):
         if authentication and limitcheck:
             order: Order = Order(services=data.request_info.services, company_info=data.company_info.dict(), product_info=data.product_info.dict(), sscop=data.request_info.sscop, cpop=data.request_info.cpop, sspop=data.request_info.sspop, ppsop=data.request_info.ppsop)
 
-            post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_info.request_id, order=order)
+            post_creation_manager: PostCreationManager = PostCreationManager(request_id=data.request_info.request_id, order=order, user_id=data.account_info.user_id, campaign_id=data.request_info.campaign_id, product_id=data.request_info.product_id)
 
             response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
 
