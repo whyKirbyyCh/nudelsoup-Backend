@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, model_validator
 from typing import Dict
 from app.services.rest.user_authentication_service import UserAuthenticationService
-from app.services.rest.user_limit_check_service import UserLimitCheckService
+from app.services.rest.user_post_limit_check_service import UserPostLimitCheckService
 from app.excpetions.rest.user_authentication_excpetion import UserAuthenticationException
 from app.excpetions.db.db_connection_exception import DBConnectionException
 from app.excpetions.rest.user_limits_exception import UserLimitsException
@@ -11,6 +11,7 @@ from app.models.order import Order
 from app.core.post_creation.post_creation_manager import PostCreationManager
 import traceback
 from app.filters.rate_limit_middleware_filter import RateLimitMiddleware
+from app.services.rest.user_analytics_limit_check import UserAnalyticsLimitCheckService
 
 
 app = FastAPI()
@@ -86,7 +87,7 @@ class RequestInfo(BaseModel):
     ppsop: bool
 
 
-class RequestData(BaseModel):
+class RequestDataPosts(BaseModel):
     request_info: RequestInfo
     account_info: AccountInfo
     company_info: CompanyInfo
@@ -95,13 +96,13 @@ class RequestData(BaseModel):
 
 @app.get("/api/get_posts")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
-async def get_posts(request: Request, data: RequestData):
+async def get_posts(request: Request, data: RequestDataPosts):
     try:
         authentication: bool = UserAuthenticationService().authenticate_user(
             data.account_info.username, data.account_info.email, data.account_info.token
         )
 
-        limitcheck: bool = UserLimitCheckService().check_user_limit(
+        limitcheck: bool = UserPostLimitCheckService().check_user_limit(
             data.account_info.user_id
         )
 
@@ -113,6 +114,42 @@ async def get_posts(request: Request, data: RequestData):
             response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
 
             return response
+        else:
+            raise UserAuthenticationException("User is not allowed to access this resource.")
+
+    except UserAuthenticationException as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+
+    except UserLimitsException as e:
+        raise HTTPException(status_code=403, detail=str(e)) from e
+
+    except DBConnectionException as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e
+
+
+
+class RequestDataAnalytics(BaseModel):
+    request_info: str
+    account_info: AccountInfo
+
+@app.get("/api/get_analytics")
+@rate_limit_middleware.limiter.limit("10 per 5 minutes")
+async def get_analytics(request: Request, data: RequestDataAnalytics):
+    try:
+        authentication: bool = UserAuthenticationService().authenticate_user(
+            data.account_info.username, data.account_info.email, data.account_info.token
+        )
+
+        limitcheck: bool = UserAnalyticsLimitCheckService().check_user_limit(
+            data.account_info.user_id
+        )
+
+        if authentication and limitcheck:
+            return {"status": "ok"}
         else:
             raise UserAuthenticationException("User is not allowed to access this resource.")
 

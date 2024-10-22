@@ -9,7 +9,7 @@ from typing import Dict, Optional
 from bson import ObjectId
 
 
-class UserLimitCheckService:
+class UserPostLimitCheckService:
     """Class checks if a user's limit has been reached."""
 
     logger = Logger.get_logger()
