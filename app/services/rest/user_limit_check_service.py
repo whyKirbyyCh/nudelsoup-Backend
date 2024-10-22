@@ -5,7 +5,7 @@ from pymongo.collection import Collection
 import datetime
 from app.config.logger_config import Logger
 import traceback
-from typing import Dict
+from typing import Dict, Optional
 from bson import ObjectId
 
 
@@ -13,7 +13,7 @@ class UserLimitCheckService:
     """Class checks if a user's limit has been reached."""
 
     logger = Logger.get_logger()
-    _db_connection: DBConnection
+    _db_connection: DBConnection = None
 
     @classmethod
     def initialize_db_connection(cls):
@@ -24,7 +24,7 @@ class UserLimitCheckService:
                 cls.logger.info("Database connection initialized.")
             except Exception as e:
                 cls.logger.error(f"Failed to initialize database connection: {e}")
-                raise DBConnectionException("Could not connect to the database.")
+                raise DBConnectionException("Could not connect to the database. 1")
 
     @classmethod
     def close_db_connection(cls):
@@ -50,12 +50,16 @@ class UserLimitCheckService:
 
         try:
             collection: Collection = cls._db_connection.get_collection(collection_name="activity")
-            user_activities: dict = dict(collection.find_one({"userId": user_id}))
+            user_activities: Optional[Dict] = collection.find_one({"userId": user_id})
 
-            if not user_activities:
-                cls.logger.info(f"User {user_id} has no activities. Will initiate one.")
+            if user_activities is None:
                 user_activities = cls._initialize_limit(user_id)
-                collection.insert_one(user_activities)
+                try:
+                    collection.insert_one(user_activities)
+                except Exception:
+                    raise DBConnectionException("Failed to insert new user activities into the database.")
+            else:
+                user_activities = dict(user_activities)
 
             check_if_update_needed: bool = cls._check_if_update_needed(
                 user_activities["nextRefresh"],
@@ -67,7 +71,7 @@ class UserLimitCheckService:
                 user_activities = cls._refresh_limit(user_activities)
 
             if user_activities["amountLeft"] <= 0:
-                raise UserLimitsException("User has reached the limit for this billing period.")
+                raise UserLimitsException("User has reached the limit for this billing period. 1")
             else:
                 updated_user_activities: dict = cls._update_limit(user_activities)
                 collection.replace_one({"userId": user_id}, updated_user_activities)
@@ -81,6 +85,7 @@ class UserLimitCheckService:
             raise UserLimitsException("User has reached the limit for this billing period.")
 
         except Exception as e:
+            cls.logger.error(f"An unexpected error occurred: {e}\n{traceback.format_exc()}")
             raise UserLimitsException(f"An unexpected error occurred: {e}\n{traceback.format_exc()}")
 
         finally:
@@ -105,9 +110,10 @@ class UserLimitCheckService:
         next_refresh_date: datetime = datetime.datetime.strptime(next_refresh, "%Y-%m-%d")
         last_refresh_date: datetime = datetime.datetime.strptime(last_refresh, "%Y-%m-%d")
 
-        if next_refresh_date.date() == datetime.datetime.today().date():
+        if next_refresh_date.date() <= datetime.datetime.today().date():
             if last_refresh_date.date() == datetime.datetime.today().date():
                 if has_been_refreshed:
+                    cls.logger.error("User has refreshed the limit today, but the limit has not been refreshed yet.")
                     raise UserLimitsException("User has refreshed the limit today, but the limit has not been refreshed yet.")
                 else:
                     return False
@@ -137,7 +143,7 @@ class UserLimitCheckService:
             "limitPerPeriod": limit_per_period,
             "nextRefresh": next_refresh,
             "lastRefresh": current_date,
-            "hasBeenRefreshed": False,
+            "hasBeenRefreshed": True,
             "period": "30 days"
         }
 
@@ -202,9 +208,10 @@ class UserLimitCheckService:
         cls._db_connection.get_collection(collection_name="users")
 
         try:
-            user: Dict = cls._db_connection.get_collection(collection_name="users").find_one({"_id": user_id})
+            user: Dict = cls._db_connection.get_collection(collection_name="users").find_one({"_id": ObjectId(user_id)})
 
             if not user:
+                cls.logger.error("User not found in DB.")
                 raise UserLimitsException("User not found.")
 
             user_limit: int
@@ -231,6 +238,3 @@ class UserLimitCheckService:
 
         except Exception as e:
             raise UserLimitsException(f"An unexpected error occurred: {e}\n{traceback.format_exc()}")
-
-        finally:
-            cls.close_db_connection()
