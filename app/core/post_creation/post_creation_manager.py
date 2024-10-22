@@ -7,26 +7,35 @@ from app.static.user_prompts.json_structure_prompt import JSONStructurePrompt
 from app.core.post_creation.openai_connection import OpenAIConnection
 from app.models.order import Order
 from app.services.post_creation.json_parsing_service import JSONParsingService
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 import traceback
+from app.services.post_creation.post_archive_service import PostArchiveService
+from app.dto.post_components_to_post import PostComponentsToPost
+from app.models.post import Post
 
 
 class PostCreationManager:
     """A Class which manages the post creation process."""
 
-    def __init__(self, request_id: str, order: Order) -> None:
+    def __init__(self, request_id: str, order: Order, user_id: str, campaign_id: str, product_id: str) -> None:
         """
         Initializes the PostCreationManager instance.
 
         Args:
             request_id (str): The unique identifier for the request.
             order (Dict[str, Dict[str, str]]): The order details.
+            user_id (str): The unique identifier for the user.
+            campaign_id (str): The unique identifier for the campaign.
+            product_id (str): The unique identifier for the product.
         """
         self.request_id: str = request_id
         self.order: Dict[str, Dict[str, Dict[str, str]]] = order.order_details
         self.services: Dict[str, bool] = order.services
         self.company_info: Dict[str, Dict[str, str]] = order.company_info
         self.product_info: Dict[str, Dict[str, str]] = order.product_info
+        self.user_id: str = user_id
+        self.campaign_id: str = campaign_id
+        self.product_id: str = product_id
 
         self.logger = Logger.get_logger()
 
@@ -62,6 +71,10 @@ class PostCreationManager:
 
                     response: Tuple[str, str] = json_parsing_service.get_title_and_content(response)
                     created_posts[service] = {"title": response[0], "content": response[1]}
+
+            posts: List[Post] = PostComponentsToPost().convert_to_posts(posts=created_posts, user_id=self.user_id, campaign_id=self.campaign_id, product_id=self.product_id)
+
+            PostArchiveService().archive_posts(posts=posts)
 
             return created_posts
 
@@ -135,14 +148,3 @@ class PostCreationManager:
             PostsCreationException: If an error occurs while getting the created posts.
         """
         return self._start_post_creation()
-
-
-if __name__ == "__main__":
-    re_id: str = "1"
-    todo: Order = Order(services={"reddit": True, "twitter": True}, company_info={"name": "nudelsoup"}, product_info={"name": "nudelsoup"}, sscop=False, cpop=False, sspop=False, ppsop=False)
-
-    post_creation_manager: PostCreationManager = PostCreationManager(request_id=re_id, order=todo)
-
-    created_posts2: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
-
-    print(created_posts2)

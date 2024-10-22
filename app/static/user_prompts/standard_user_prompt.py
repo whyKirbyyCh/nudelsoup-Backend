@@ -40,7 +40,8 @@ class StandardUserPrompt:
         prompt += """
         You can incorporate the things as you see fit for the information given.
         
-        Please make the post honest, not marketing like, meaning not too over the top. Please make the post clear and concise and try to make it fit the market on the site as best as possible.
+        Please make the post honest, not marketing like, meaning not too over the top. Please make the post clear and concise and try to make it fit the market on the site as best as possible. It should not sound like advertising more like 
+        a company engaging with a community which might benefit from their product. More like a building a product in public kind of vibe. It should not sound corporate at all!
         """
 
         return prompt
