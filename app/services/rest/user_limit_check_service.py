@@ -9,7 +9,7 @@ from typing import Dict, Optional
 from bson import ObjectId
 
 
-class UserPostLimitCheckService:
+class UserLimitCheckService:
     """Class checks if a user's limit has been reached."""
 
     logger = Logger.get_logger()
@@ -35,7 +35,7 @@ class UserPostLimitCheckService:
             cls.logger.info("Database connection closed.")
 
     @classmethod
-    def check_user_limit(cls, user_id: str) -> bool:
+    def check_user_limit(cls, user_id: str, flag: str) -> bool:
         """
         Checks if the user limit has been reached.
 
@@ -46,10 +46,22 @@ class UserPostLimitCheckService:
             DBConnectionException: If the database connection fails.
             UserLimitsException: If the user limit has been reached.
         """
+        collection_name: str
+
+        if flag != "posts" and flag != "analytics":
+            cls.logger.error(f"Invalid flag: {flag}")
+            return False
+        elif flag == "posts":
+            collection_name = "activity_posts"
+        elif flag == "analytics":
+            collection_name = "activity_analytics"
+        else:
+            return False
+
         cls.initialize_db_connection()
 
         try:
-            collection: Collection = cls._db_connection.get_collection(collection_name="activity")
+            collection: Collection = cls._db_connection.get_collection(collection_name=collection_name)
             user_activities: Optional[Dict] = collection.find_one({"userId": user_id})
 
             if user_activities is None:
