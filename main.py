@@ -18,11 +18,7 @@ logger = Logger.get_logger()
 rate_limit_middleware = RateLimitMiddleware(app, default_limit="1 per 5 minutes")
 
 
-# BaseModel classes for request data remain unchanged
 class AccountInfo(BaseModel):
-    user_id: str
-    password: str
-    email: str
     token: str
 
 
@@ -99,14 +95,12 @@ class RequestDataAnalytics(BaseModel):
     account_info: AccountInfo
 
 
-def authenticate_and_check_limits(user_id: str, password: str,  token: str, limit_check_func: Callable[[str, str], bool], flag: str) -> None:
+def authenticate_and_check_limits(token: str, limit_check_func: Callable[[str, str], bool], flag: str) -> None:
     """
     Helper function for authentication and user limit checks.
 
     Args:
-        user_id (str): The user ID.
         token (str): The token.
-        password (str): The password.
         limit_check_func (Callable[[str, str], bool]): The user limit check function.
         flag (str): The flag for the limit check.
 
@@ -114,7 +108,7 @@ def authenticate_and_check_limits(user_id: str, password: str,  token: str, limi
         UserAuthenticationException: If the user authentication fails.
         UserLimitsException: If the user limit check fails.
     """
-    authenticated = UserAuthenticationService().authenticate_user(user_id=user_id, password=password, token=token)
+    authenticated, user_id = UserAuthenticationService().authenticate_user(token=token)
     limit_check_passed = limit_check_func(user_id, flag)
 
     if not authenticated:
@@ -123,19 +117,17 @@ def authenticate_and_check_limits(user_id: str, password: str,  token: str, limi
         raise UserLimitsException("User limit exceeded.")
 
 
-def authenticate_user(user_id: str, password: str, token: str) -> None:
+def authenticate_user(token: str) -> None:
     """
     Helper function for authentication.
 
     Args:
-        user_id (str): The user ID.
-        password (str): The password.
         token (str): The token.
 
     Raises:
         UserAuthenticationException: If the user authentication fails.
     """
-    authenticated = UserAuthenticationService().authenticate_user(user_id=user_id, password=password, token=token)
+    authenticated = UserAuthenticationService().authenticate_user(token=token)
 
     if not authenticated:
         raise UserAuthenticationException("User authentication failed.")
@@ -164,8 +156,6 @@ def error_handling(func):
 @error_handling
 async def get_posts(request: Request, data: RequestDataPosts):
     authenticate_and_check_limits(
-        user_id=data.account_info.user_id,
-        password=data.account_info.password,
         token=data.account_info.token,
         limit_check_func=UserLimitCheckService().check_user_limit,
         flag="posts"
@@ -199,8 +189,6 @@ async def get_posts(request: Request, data: RequestDataPosts):
 @error_handling
 async def get_analytics(request: Request, data: RequestDataAnalytics):
     authenticate_and_check_limits(
-        user_id=data.account_info.user_id,
-        password=data.account_info.password,
         token=data.account_info.token,
         limit_check_func=UserLimitCheckService().check_user_limit,
         flag="analytics"
@@ -214,9 +202,7 @@ async def get_analytics(request: Request, data: RequestDataAnalytics):
 @error_handling
 async def get_analytics(request: Request, data: RequestDataAnalytics):
     authenticate_user(
-        user_id=data.account_info.user_id,
-        password=data.account_info.password,
-        token=data.account_info.token,
+        token=data.account_info.token
     )
 
     return {"status": "ok"}
