@@ -13,7 +13,7 @@ class UserLimitCheckService:
     """Class checks if a user's limit has been reached."""
 
     logger = Logger.get_logger()
-    _db_connection: DBConnection = None
+    _db_connection: Optional[DBConnection] = None
 
     @classmethod
     def initialize_db_connection(cls):
