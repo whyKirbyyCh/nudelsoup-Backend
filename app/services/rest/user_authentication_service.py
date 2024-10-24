@@ -8,12 +8,12 @@ class UserAuthenticationService:
     """
 
     @classmethod
-    def authenticate_user(cls, username: str, password: str, token: str) -> bool:
+    def authenticate_user(cls, user_id: str, password: str, token: str) -> bool:
         """
         Authenticates the user.
 
         Args:
-            username (str): The username of the user.
+            user_id (str): The username of the user.
             password (str): The password of the user.
             token (str): The token of the user.
 
