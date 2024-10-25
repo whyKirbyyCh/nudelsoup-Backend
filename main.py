@@ -83,18 +83,6 @@ class RequestInfo(BaseModel):
     ppsop: bool
 
 
-class RequestDataPosts(BaseModel):
-    request_info: RequestInfo
-    account_info: AccountInfo
-    company_info: CompanyInfo
-    product_info: ProductInfo
-
-
-class RequestDataAnalytics(BaseModel):
-    request_info: str
-    account_info: AccountInfo
-
-
 def authenticate_and_check_limits(token: str, limit_check_func: Callable[[str, str], bool], flag: str) -> None:
     """
     Helper function for authentication and user limit checks.
@@ -151,6 +139,13 @@ def error_handling(func):
     return wrapper
 
 
+class RequestDataPosts(BaseModel):
+    request_info: RequestInfo
+    account_info: AccountInfo
+    company_info: CompanyInfo
+    product_info: ProductInfo
+
+
 @app.get("/api/get_posts")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
 @error_handling
@@ -184,6 +179,11 @@ async def get_posts(request: Request, data: RequestDataPosts):
     return response
 
 
+class RequestDataAnalytics(BaseModel):
+    request_info: str
+    account_info: AccountInfo
+
+
 @app.get("/api/get_analytics")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
 @error_handling
@@ -198,6 +198,27 @@ async def get_analytics(request: Request, data: RequestDataAnalytics):
 
 
 @app.put("/api/give_token")
+@rate_limit_middleware.limiter.limit("10 per 5 minutes")
+@error_handling
+async def get_analytics(request: Request, data: RequestDataAnalytics):
+    authenticate_user(
+        token=data.account_info.token
+    )
+
+    return {"status": "ok"}
+
+
+class PostInfo(BaseModel):
+    posts: Dict[str, Dict[str, str]]
+
+
+class RequestDataConnection(BaseModel):
+    request_info: str
+    account_info: AccountInfo
+    post_info: PostInfo
+
+
+@app.put("/api/connect_posts")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
 @error_handling
 async def get_analytics(request: Request, data: RequestDataAnalytics):
