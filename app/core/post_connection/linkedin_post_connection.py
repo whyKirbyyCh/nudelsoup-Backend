@@ -10,8 +10,10 @@ import traceback
 from selenium.webdriver.common.by import By
 import os
 from app.services.post_connection.linkedin_user_site_retrival_service import LinkedinUserSiteRetrivalService
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+import pyperclip
 
 
 class LinkedInPostConnection:
@@ -64,40 +66,53 @@ class LinkedInPostConnection:
             user_link = LinkedinUserSiteRetrivalService.get_user_site()
             cls.scraper.get(user_link)
 
-            posts_collected = 0
-            scroll_attempts = 0
-            max_scroll_attempts = 10  # Define a max to prevent infinite loops if the page has no more posts
+            time.sleep(5)
 
-            while posts_collected < 10 and scroll_attempts < max_scroll_attempts:
-                # Locate all post elements in the main feed section
-                content_container = cls.scraper.find_element(By.CLASS_NAME, "scaffold-finite-scroll__content")
-                post_elements = content_container.find_elements(By.CSS_SELECTOR, "div.ember-view.occludable-update")
+            sort_button = cls.scraper.find_element(By.ID, "sort-dropdown-trigger")
+            sort_button.click()
+            time.sleep(1)
 
-                # Process each post in the current viewport
-                for post in post_elements:
-                    try:
-                        # Extract post content
-                        post_content_element = post.find_element(By.CSS_SELECTOR,
-                                                                 "div.update-components-text.relative.update-components-update-v2__commentary")
-                        post_content = post_content_element.text
-                        cls.logger.info(f"Post content: {post_content}")
+            sort_container = cls.scraper.find_element(By.CSS_SELECTOR, "ul.sort-dropdown__list")
+            recent_button = sort_container.find_element(By.XPATH, ".//button[.//span[text()='Recent']]")
+            recent_button.click()
 
-                        post_id = post.get_attribute("id")
-                        connected_posts[post_id] = post_content
-                        posts_collected += 1
+            time.sleep(5)
 
-                    except Exception as e:
-                        cls.logger.warning(f"Could not extract content from post {post.get_attribute('id')}")
+            sort_button.click()
 
-                cls.scraper.find_element(By.TAG_NAME, "body").send_keys(Keys.END)
-                time.sleep(4)  # Allow time for new posts to load
+            content_container = cls.scraper.find_element(By.CLASS_NAME, "scaffold-finite-scroll__content")
+            post_elements = content_container.find_elements(By.CSS_SELECTOR, "div.ember-view.occludable-update")
 
-                # Update attempt count if no new posts load
-                new_post_elements = content_container.find_elements(By.CSS_SELECTOR, "div.ember-view.occludable-update")
-                if len(new_post_elements) == len(post_elements):
-                    scroll_attempts += 1  # Increment if no new posts were loaded
-                else:
-                    scroll_attempts = 0  # Reset if new posts loaded
+            for post in post_elements[:1]:
+                try:
+                    text_element = post.find_element(By.CSS_SELECTOR, "div.feed-shared-inline-show-more-text span.break-words span[dir='ltr']")
+                    text = text_element.text
+
+                    cls.logger.info(f"Text: {text}")
+
+                    post_menu_button = WebDriverWait(post, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button.feed-shared-control-menu__trigger"))
+                    )
+                    post_menu_button.click()
+
+                    time.sleep(4)
+
+                    control_menu = WebDriverWait(cls.scraper, 10).until(
+                        EC.visibility_of_element_located((By.CLASS_NAME, "feed-shared-control-menu__content"))
+                    )
+
+                    copy_link_button = WebDriverWait(control_menu, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, ".//h5[text()='Copy link to post']"))
+                    )
+
+                    copy_link_button.click()
+                    time.sleep(1)
+
+                    post_link = pyperclip.paste()
+
+                except Exception as e:
+                    cls.logger.error(f"An error occurred while finding the author link: {e} \n{traceback.format_exc()}")
+                    continue
 
             return connected_posts
 
@@ -108,6 +123,10 @@ class LinkedInPostConnection:
         except Exception as e:
             cls.logger.error(f"An error occurred while connecting the posts to LinkedIn: {e} \n{traceback.format_exc()}")
             raise LinkedinPostConnectionException(f"An error occurred while connecting the posts to LinkedIn: {e}")
+
+        finally:
+            cls.scraper.quit()
+
 
 
 if __name__ == "__main__":
