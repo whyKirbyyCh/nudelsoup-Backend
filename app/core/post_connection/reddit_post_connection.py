@@ -66,8 +66,9 @@ class RedditPostConnection:
                     connected_posts[post_id] = best_link
 
             cls.logger.info(f"Connected posts to Reddit: {connected_posts}")
-
             cls._save_connections(connected_posts)
+
+            return connected_posts
 
         except DBConnectionException as e:
             cls.logger.error(f"Failed to connect posts to Reddit: {e}")
