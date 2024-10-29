@@ -5,6 +5,7 @@ from app.excpetions.post_connection_exception.post_connection_exception import P
 from app.excpetions.post_connection_exception.reddit_post_connection_exception import RedditPostConnectionException
 from app.excpetions.db.db_connection_exception import DBConnectionException
 from app.core.post_connection.reddit_post_connection import RedditPostConnection
+from app.core.post_connection.linkedin_post_connection import LinkedInPostConnection
 from app.db.db_connection import DBConnection
 from pymongo.collection import Collection
 from bson import ObjectId
@@ -39,11 +40,15 @@ class PostConnectionManager:
 
         try:
             for site, content in self.posts.items():
-                if site == "reddit":
+                if site.lower().strip() == "reddit":
                     connected_posts.update(RedditPostConnection.connect_posts_to_reddit(posts=content, user_id=self.user_id))
 
+                elif site.lower().strip() == "linkedin":
+                    connected_posts.update(LinkedInPostConnection.connect_posts_to_linkedin(post=content, user_id=self.user_id))
+
                 else:
-                    raise PostConnectionException(f"Unsupported site: {site}")
+                    self.logger.error(f"Unknown site: {site}")
+                    raise PostConnectionException(f"Unknown site: {site}")
 
         except RedditPostConnectionException as e:
             self.logger.error(f"An error occurred while connecting the posts to Reddit: {e} \n{traceback.format_exc()}")

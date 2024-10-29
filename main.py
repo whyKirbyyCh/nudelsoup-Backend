@@ -41,7 +41,7 @@ class CompanyInfo(BaseModel):
             elif field.startswith("additional_"):
                 if not isinstance(values[field], str):
                     raise ValueError(f"{field} must be a string")
-            else:
+            else:  # Invalid field
                 raise ValueError(
                     f"Unexpected field: {field}. It must start with 'additional_' or be a defined model field.")
         return values
@@ -65,7 +65,7 @@ class ProductInfo(BaseModel):
             elif field.startswith("additional_"):
                 if not isinstance(values[field], str):
                     raise ValueError(f"{field} must be a string")
-            else:
+            else:  # Invalid field
                 raise ValueError(
                     f"Unexpected field: {field}. It must start with 'additional_' or be a defined model field.")
         return values
@@ -83,7 +83,7 @@ class RequestInfo(BaseModel):
     ppsop: bool
 
 
-def authenticate_and_check_limits(token: str, limit_check_func: Callable[[str, str], bool], flag: str) -> None:
+def authenticate_and_check_limits(token: str, limit_check_func: Callable[[str, str], bool], flag: str) -> str:
     """
     Helper function for authentication and user limit checks.
 
@@ -103,6 +103,8 @@ def authenticate_and_check_limits(token: str, limit_check_func: Callable[[str, s
         raise UserAuthenticationException("User authentication failed.")
     if not limit_check_passed:
         raise UserLimitsException("User limit exceeded.")
+
+    return user_id
 
 
 def authenticate_user(token: str) -> None:
@@ -146,11 +148,11 @@ class RequestDataPosts(BaseModel):
     product_info: ProductInfo
 
 
-@app.get("/api/get_posts")
+@app.put("/api/get_posts")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
 @error_handling
 async def get_posts(request: Request, data: RequestDataPosts):
-    authenticate_and_check_limits(
+    user_id: str = authenticate_and_check_limits(
         token=data.account_info.token,
         limit_check_func=UserLimitCheckService().check_user_limit,
         flag="posts"
@@ -169,12 +171,12 @@ async def get_posts(request: Request, data: RequestDataPosts):
     post_creation_manager = PostCreationManager(
         request_id=data.request_info.request_id,
         order=order,
-        user_id=data.account_info.user_id,
+        user_id=user_id,
         campaign_id=data.request_info.campaign_id,
         product_id=data.request_info.product_id
     )
 
-    response = post_creation_manager.get_posts()
+    response: Dict[str, Dict[str, str]] = post_creation_manager.get_posts()
 
     return response
 
@@ -226,4 +228,4 @@ async def get_analytics(request: Request, data: RequestDataAnalytics):
         token=data.account_info.token
     )
 
-    return {"status": "ok"}
+
