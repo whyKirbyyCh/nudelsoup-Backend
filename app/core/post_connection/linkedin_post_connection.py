@@ -132,7 +132,7 @@ class LinkedInPostConnection:
                     cls.logger.error(f"An error occurred while finding the author link: {e} \n{traceback.format_exc()}")
                     continue
 
-            cls.save_connections(connected_posts, user_id)
+            cls._save_connections(connected_posts)
 
             return connected_posts
 
@@ -160,21 +160,21 @@ class LinkedInPostConnection:
             cls.scraper.quit()
 
     @classmethod
-    def save_connections(cls, connected_posts: Dict[str, str], user_id: str) -> None:
+    def _save_connections(cls, connected_posts: Dict[str, str]) -> None:
         """
         Saves the connected posts to the database.
 
         Args:
             connected_posts (Dict[str, str]): The dictionary of connected posts.
-            user_id (str): The ID of the user.
 
         Raises:
             LinkedinPostConnectionException: If an error occurs while saving the connections.
             DBConnectionException: If an error occurs while connecting to the database.
         """
         try:
+            collection_archive: Collection = cls._db_connection.get_collection("post_archive")
+
             for post_id, post_link in connected_posts.items():
-                collection_archive: Collection = cls._db_connection.get_collection("post_archive")
                 collection_archive.update_one({"_id": ObjectId(post_id)}, {"$set": {"linkedinLink": post_link}})
 
         except DBConnectionException:
