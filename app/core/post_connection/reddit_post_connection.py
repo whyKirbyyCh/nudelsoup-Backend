@@ -14,6 +14,7 @@ import traceback
 from bson import ObjectId
 
 
+# TODO: add a threshold to the similarity check
 class RedditPostConnection:
     """ Class for Reddit post connection. """
 

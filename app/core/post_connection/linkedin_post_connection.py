@@ -1,7 +1,7 @@
 from app.db.db_connection import DBConnection
 from app.config.logger_config import Logger
 from dotenv import load_dotenv
-from typing import Dict
+from typing import Dict, Tuple
 from app.config.scraper_config import Scraper
 from app.excpetions.config.scraper_exception import ScraperException
 from app.excpetions.post_connection_exception.linkedin_post_connection_excpetion import LinkedinPostConnectionException
@@ -11,9 +11,14 @@ from selenium.webdriver.common.by import By
 import os
 from app.services.post_connection.linkedin_user_site_retrival_service import LinkedinUserSiteRetrivalService
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import TimeoutException
 import pyperclip
+from selenium.common.exceptions import NoSuchElementException
+from difflib import SequenceMatcher
+from pymongo.collection import Collection
+from bson import ObjectId
+from app.excpetions.db.db_connection_exception import DBConnectionException
 
 
 class LinkedInPostConnection:
@@ -25,12 +30,12 @@ class LinkedInPostConnection:
     _db_connection: DBConnection = DBConnection()
 
     @classmethod
-    def connect_posts_to_linkedin(cls, posts: Dict[str, str], user_id: str) -> Dict[str, str]:
+    def connect_posts_to_linkedin(cls, post: Tuple[str, str], user_id: str) -> Dict[str, str]:
         """
         Connect posts to LinkedIn by finding the most similar LinkedIn post for each content entry.
 
         Args:
-            posts (Dict[str, str]): The dictionary of posts to connect.
+            post (str): The dictionary of posts to connect.
             user_id (str): The ID of the user.
 
         Returns:
@@ -55,6 +60,20 @@ class LinkedInPostConnection:
             password_field = cls.scraper.find_element(By.ID, "password")
             password_field.send_keys(password)
 
+            try:
+                remember_me_checkbox = WebDriverWait(cls.scraper, 10).until(
+                    ec.element_to_be_clickable((By.ID, "rememberMeOptIn-checkbox"))
+                )
+                remember_me_checkbox.click()
+            except NoSuchElementException:
+                cls.logger.info("Remember me checkbox not found.")
+
+            except TimeoutException:
+                cls.logger.info("Remember me checkbox not found.")
+
+            except Exception as e:
+                cls.logger.error(f"An error occurred while connecting to LinkedIn: {e}")
+
             sign_in_button = cls.scraper.find_element(
                 By.CSS_SELECTOR,
                 "button.btn__primary--large.from__button--floating[data-litms-control-urn='login-submit'][aria-label='Sign in'][type='submit']"
@@ -77,48 +96,61 @@ class LinkedInPostConnection:
             recent_button.click()
 
             time.sleep(5)
-
             sort_button.click()
 
             content_container = cls.scraper.find_element(By.CLASS_NAME, "scaffold-finite-scroll__content")
             post_elements = content_container.find_elements(By.CSS_SELECTOR, "div.ember-view.occludable-update")
 
-            for post in post_elements[:1]:
+            for linkedin_post in post_elements[:1]:
                 try:
-                    text_element = post.find_element(By.CSS_SELECTOR, "div.feed-shared-inline-show-more-text span.break-words span[dir='ltr']")
+                    text_element = linkedin_post.find_element(By.CSS_SELECTOR, "div.feed-shared-inline-show-more-text span.break-words span[dir='ltr']")
                     text = text_element.text
 
-                    cls.logger.info(f"Text: {text}")
-
-                    post_menu_button = WebDriverWait(post, 10).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "button.feed-shared-control-menu__trigger"))
+                    post_menu_button = WebDriverWait(linkedin_post, 10).until(
+                        ec.element_to_be_clickable((By.CSS_SELECTOR, "button.feed-shared-control-menu__trigger"))
                     )
                     post_menu_button.click()
-
                     time.sleep(4)
 
                     control_menu = WebDriverWait(cls.scraper, 10).until(
-                        EC.visibility_of_element_located((By.CLASS_NAME, "feed-shared-control-menu__content"))
+                        ec.visibility_of_element_located((By.CLASS_NAME, "feed-shared-control-menu__content"))
                     )
-
                     copy_link_button = WebDriverWait(control_menu, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, ".//h5[text()='Copy link to post']"))
+                        ec.element_to_be_clickable((By.XPATH, ".//h5[text()='Copy link to post']"))
                     )
-
                     copy_link_button.click()
                     time.sleep(1)
 
                     post_link = pyperclip.paste()
 
+                    similarity = SequenceMatcher(None, text, post[1]).ratio()
+
+                    if similarity > 0.5:
+                        connected_posts[post[0]] = post_link
+
                 except Exception as e:
                     cls.logger.error(f"An error occurred while finding the author link: {e} \n{traceback.format_exc()}")
                     continue
+
+            cls.save_connections(connected_posts, user_id)
 
             return connected_posts
 
         except ScraperException as e:
             cls.logger.error(f"An error occurred while connecting to LinkedIn: {e} \n{traceback.format_exc()}")
             raise LinkedinPostConnectionException(f"An error occurred while connecting to LinkedIn: {e}")
+
+        except NoSuchElementException as e:
+            cls.logger.error(f"Could not find an element: {e} \n{traceback.format_exc()}")
+            raise LinkedinPostConnectionException(f"Could not find an element: {e}")
+
+        except TimeoutException as e:
+            cls.logger.error(f"Timeout error: {e} \n{traceback.format_exc()}")
+            raise LinkedinPostConnectionException(f"Timeout error: {e}")
+
+        except DBConnectionException as e:
+            cls.logger.error(f"An error occurred while connecting to the database: {e} \n{traceback.format_exc()}")
+            raise LinkedinPostConnectionException(f"An error occurred while connecting to the database: {e}")
 
         except Exception as e:
             cls.logger.error(f"An error occurred while connecting the posts to LinkedIn: {e} \n{traceback.format_exc()}")
@@ -127,14 +159,44 @@ class LinkedInPostConnection:
         finally:
             cls.scraper.quit()
 
+    @classmethod
+    def save_connections(cls, connected_posts: Dict[str, str], user_id: str) -> None:
+        """
+        Saves the connected posts to the database.
+
+        Args:
+            connected_posts (Dict[str, str]): The dictionary of connected posts.
+            user_id (str): The ID of the user.
+
+        Raises:
+            LinkedinPostConnectionException: If an error occurs while saving the connections.
+            DBConnectionException: If an error occurs while connecting to the database.
+        """
+        try:
+            for post_id, post_link in connected_posts.items():
+                collection_archive: Collection = cls._db_connection.get_collection("post_archive")
+                collection_archive.update_one({"_id": ObjectId(post_id)}, {"$set": {"linkedinLink": post_link}})
+
+        except DBConnectionException:
+            cls.logger.error("DB connection error.")
+            raise DBConnectionException("Could not connect to the database while saving connections.")
+
+        except Exception as e:
+            cls.logger.error(f"An error occurred while saving connections: {e} \n{traceback.format_exc()}")
+            raise LinkedinPostConnectionException(f"An error occurred while saving connections: {e}")
+
+        finally:
+            cls._db_connection.close_connection()
 
 
 if __name__ == "__main__":
     try:
         linkedin_connection = LinkedInPostConnection()
         result = linkedin_connection.connect_posts_to_linkedin(
-            posts={"post1": "content1", "post2": "content2", "post3": "content3"},
-            user_id="user_id"
+            user_id="user_id",
+            post=("id", "Want to sample more of our journalism before subscribing? Register here to access free FT articles: https://lnkd.in/e4U2_erE"),
         )
+
+        print(result)
     except Exception as se:
         print(f"Error: {se}")
