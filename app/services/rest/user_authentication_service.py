@@ -6,10 +6,12 @@ from app.db.db_connection import DBConnection
 from app.config.logger_config import Logger
 from typing import Tuple, Dict
 from bson import ObjectId
-from cryptography.fernet import Fernet
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
 from dotenv import load_dotenv
 import os
 import traceback
+import base64
 
 
 class UserAuthenticationService:
@@ -39,14 +41,18 @@ class UserAuthenticationService:
         hashed_pw: str
 
         try:
-            key: str = os.getenv("SECRET_KEY")
-            cipher: Fernet = Fernet(key)
+            key = base64.b64decode(os.getenv("SECRET_KEY"))
+            iv = base64.b64decode(os.getenv("SECRET_IV"))
 
-            decrypted_data: str = cipher.decrypt(token.encode()).decode()
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+
+            encrypted_data = base64.b64decode(token)
+            decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size).decode()
+
             user_id, hashed_pw = decrypted_data.split(":")
 
             if not cls._check_credentials(user_id, hashed_pw):
-                raise InvalidUserCredentialsException("User credentials are invalid.")
+                raise InvalidUserCredentialsException("User credentials did not match.")
 
             return True, user_id
 
