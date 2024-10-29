@@ -7,14 +7,14 @@ from app.excpetions.config.scraper_exception import ScraperException
 from app.excpetions.post_connection_exception.linkedin_post_connection_excpetion import LinkedinPostConnectionException
 import time
 import traceback
-from selenium.webdriver.common.by import By
 import os
 from app.services.post_connection.linkedin_user_site_retrival_service import LinkedinUserSiteRetrivalService
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import TimeoutException
-import pyperclip
 from selenium.common.exceptions import NoSuchElementException
+import pyperclip
 from difflib import SequenceMatcher
 from pymongo.collection import Collection
 from bson import ObjectId
@@ -22,7 +22,7 @@ from app.excpetions.db.db_connection_exception import DBConnectionException
 
 
 class LinkedInPostConnection:
-    """ A class connecting the posts to LinkedIn. """
+    """ A class connecting a post to LinkedIn. """
 
     logger = Logger.get_logger()
     scraper = Scraper.get_scraper()

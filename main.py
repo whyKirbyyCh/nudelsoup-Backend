@@ -31,15 +31,15 @@ class CompanyInfo(BaseModel):
     company_industry: str
 
     class Config:
-        extra = "allow"  # Allow additional fields not defined in the model
+        extra = "allow"
 
     @model_validator(mode="before")
     def check_additional_fields(cls, values):
         for field in values:
-            if field in cls.model_fields:  # Standard model field
+            if field in cls.model_fields:
                 continue
-            elif field.startswith("additional_"):  # Valid additional field
-                if not isinstance(values[field], str):  # Check if it's a string
+            elif field.startswith("additional_"):
+                if not isinstance(values[field], str):
                     raise ValueError(f"{field} must be a string")
             else:  # Invalid field
                 raise ValueError(
@@ -55,15 +55,15 @@ class ProductInfo(BaseModel):
     product_market: str
 
     class Config:
-        extra = "allow"  # Allow additional fields not defined in the model
+        extra = "allow"
 
     @model_validator(mode="before")
     def check_additional_fields(cls, values):
         for field in values:
-            if field in cls.model_fields:  # Standard model field
+            if field in cls.model_fields:
                 continue
-            elif field.startswith("additional_"):  # Valid additional field
-                if not isinstance(values[field], str):  # Check if it's a string
+            elif field.startswith("additional_"):
+                if not isinstance(values[field], str):
                     raise ValueError(f"{field} must be a string")
             else:  # Invalid field
                 raise ValueError(
@@ -228,4 +228,4 @@ async def get_analytics(request: Request, data: RequestDataAnalytics):
         token=data.account_info.token
     )
 
-    return {"status": "ok"}
+
