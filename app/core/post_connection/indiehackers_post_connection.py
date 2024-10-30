@@ -14,6 +14,9 @@ from selenium.common.exceptions import NoSuchElementException
 import traceback
 from difflib import SequenceMatcher
 from bs4 import BeautifulSoup
+from app.excpetions.db.db_connection_exception import DBConnectionException
+from pymongo.collection import Collection
+from bson import ObjectId
 
 
 class IndiehackersPostConnection:
@@ -80,6 +83,8 @@ class IndiehackersPostConnection:
                 post_link = post_link_element.get_attribute("href")
                 connected_posts[post[0]] = post_link
 
+            cls._save_connections(connected_posts)
+
             return connected_posts
 
         except ScraperException as e:
@@ -100,6 +105,34 @@ class IndiehackersPostConnection:
 
         finally:
             cls.scraper.quit()
+
+    @classmethod
+    def _save_connections(cls, connections: Dict[str, str]) -> None:
+        """
+        Save the connections to the database.
+
+        Args:
+            connections (Dict[str, str]): The connections to save.
+
+        Raises:
+            DBConnectionException: If the database connection fails.
+        """
+        try:
+            collection_archive: Collection = cls._db_connection.get_collection("post_archive")
+
+            for post_id, link in connections.items():
+                collection_archive.update_one({"_id": ObjectId(post_id)}, {"$set": {"indiehackersLink": link}})
+
+        except DBConnectionException:
+            cls.logger.error("DB connection error.")
+            raise DBConnectionException("Could not connect to the database while saving connections.")
+
+        except Exception as e:
+            cls.logger.error(f"An error occurred while saving connections: {e} \n{traceback.format_exc()}")
+            raise IndiehackersPostConnectionException(f"An unknown error occurred while saving connections: {e}")
+
+        finally:
+            cls._db_connection.close_connection()
 
 
 if __name__ == "__main__":
