@@ -87,6 +87,7 @@ class TwitterPostConnection:
                     continue
 
             connected_posts[post[0]] = most_similar_post
+            cls.logger.info(f"Connected posts to Twitter: {connected_posts}")
             return connected_posts
 
         except TimeoutException as e:

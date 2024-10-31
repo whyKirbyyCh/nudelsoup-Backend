@@ -25,7 +25,7 @@ class HackernewsPostConnection:
     _db_connection: DBConnection = DBConnection()
 
     @classmethod
-    def get_user_site(cls, post: Tuple[str, str], user_id: str) -> Dict[str, str]:
+    def connect_posts_to_hackernews(cls, post: Tuple[str, str], user_id: str) -> Dict[str, str]:
         """
         Connect posts to Hackernews by finding the most similar Hackernews post for each content entry.
 
@@ -70,7 +70,9 @@ class HackernewsPostConnection:
             
             connected_posts[post[0]] = link
 
-            cls._save_connections(connected_posts)
+            #cls._save_connections(connected_posts)
+
+            cls.logger.info(f"Connected posts to Hackernews: {connected_posts}")
             return connected_posts
 
         except ScraperException as e:
