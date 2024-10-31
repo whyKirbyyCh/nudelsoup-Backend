@@ -60,20 +60,6 @@ class LinkedInPostConnection:
             password_field = cls.scraper.find_element(By.ID, "password")
             password_field.send_keys(password)
 
-            try:
-                remember_me_checkbox = WebDriverWait(cls.scraper, 10).until(
-                    ec.element_to_be_clickable((By.ID, "rememberMeOptIn-checkbox"))
-                )
-                remember_me_checkbox.click()
-            except NoSuchElementException:
-                cls.logger.info("Remember me checkbox not found.")
-
-            except TimeoutException:
-                cls.logger.info("Remember me checkbox not found.")
-
-            except Exception as e:
-                cls.logger.error(f"An error occurred while connecting to LinkedIn: {e}")
-
             sign_in_button = cls.scraper.find_element(
                 By.CSS_SELECTOR,
                 "button.btn__primary--large.from__button--floating[data-litms-control-urn='login-submit'][aria-label='Sign in'][type='submit']"
@@ -87,7 +73,9 @@ class LinkedInPostConnection:
 
             time.sleep(5)
 
-            sort_button = cls.scraper.find_element(By.ID, "sort-dropdown-trigger")
+            sort_button = WebDriverWait(cls.scraper, 10).until(
+                ec.element_to_be_clickable((By.ID, "sort-dropdown-trigger"))
+            )
             sort_button.click()
             time.sleep(1)
 
@@ -132,8 +120,8 @@ class LinkedInPostConnection:
                     cls.logger.error(f"An error occurred while finding the author link: {e} \n{traceback.format_exc()}")
                     continue
 
-            cls._save_connections(connected_posts)
-
+            #cls._save_connections(connected_posts)
+            cls.logger.info(f"Connected posts to LinkedIn: {connected_posts}")
             return connected_posts
 
         except ScraperException as e:

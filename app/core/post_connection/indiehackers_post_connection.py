@@ -83,8 +83,8 @@ class IndiehackersPostConnection:
                 post_link = post_link_element.get_attribute("href")
                 connected_posts[post[0]] = post_link
 
-            cls._save_connections(connected_posts)
-
+            #cls._save_connections(connected_posts)
+            cls.logger.info(f"Connected posts to Indiehackers: {connected_posts}")
             return connected_posts
 
         except ScraperException as e:

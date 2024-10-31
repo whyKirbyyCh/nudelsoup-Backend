@@ -25,7 +25,7 @@ class HackernewsPostConnection:
     _db_connection: DBConnection = DBConnection()
 
     @classmethod
-    def get_user_site(cls, post: Tuple[str, str], user_id: str) -> Dict[str, str]:
+    def connect_posts_to_hackernews(cls, post: Tuple[str, str], user_id: str) -> Dict[str, str]:
         """
         Connect posts to Hackernews by finding the most similar Hackernews post for each content entry.
 
@@ -59,13 +59,7 @@ class HackernewsPostConnection:
                 title_element = element.find_element(By.CSS_SELECTOR, "td.title > span.titleline")
                 link_element = title_element.find_element(By.TAG_NAME, "a")
 
-                cls.logger.info(f"{link_element}")
-
-                cls.logger.info(f"{link_element.text}")
-
                 similarity = SequenceMatcher(None, post[1], link_element.text).ratio()
-
-                cls.logger.info(f"Similarity: {similarity}")
 
                 if similarity > max_similarity:
                     max_similarity = similarity
@@ -75,7 +69,10 @@ class HackernewsPostConnection:
             link = f"https://news.ycombinator.com/item?id={link_id}"
             
             connected_posts[post[0]] = link
-            
+
+            #cls._save_connections(connected_posts)
+
+            cls.logger.info(f"Connected posts to Hackernews: {connected_posts}")
             return connected_posts
 
         except ScraperException as e:
@@ -98,6 +95,35 @@ class HackernewsPostConnection:
 
         finally:
             cls.scraper.quit()
+
+    @classmethod
+    def _save_connections(cls, connections: Dict[str, str]) -> None:
+        """
+        Save the connections to the database.
+
+        Args:
+            connections (Dict[str, str]): The connections to save.
+
+        Raises:
+            DBConnectionException: If the database connection fails.
+            HackernewsPostConnectionException: If an error occurs while saving the connections.
+        """
+        try:
+            collection_archive: Collection = cls._db_connection.get_collection("post_archive")
+
+            for post_id, link in connections.items():
+                collection_archive.update_one({"_id": ObjectId(post_id)}, {"$set": {"hackernewsLink": link}})
+
+        except DBConnectionException:
+            cls.logger.error("DB connection error.")
+            raise DBConnectionException("Could not connect to the database while saving connections.")
+
+        except Exception as e:
+            cls.logger.error(f"An error occurred while saving connections: {e} \n{traceback.format_exc()}")
+            raise HackernewsPostConnectionException(f"An unknown error occurred while saving connections: {e}")
+
+        finally:
+            cls._db_connection.close_connection()
 
 
 if __name__ == "__main__":
