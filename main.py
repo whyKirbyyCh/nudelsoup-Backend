@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, model_validator
-from typing import Dict, Callable
+from typing import Dict, Callable, Tuple
 from functools import wraps
 from app.services.rest.user_authentication_service import UserAuthenticationService
 from app.services.rest.user_limit_check_service import UserLimitCheckService
@@ -10,6 +10,8 @@ from app.excpetions.rest.user_limits_exception import UserLimitsException
 from app.config.logger_config import Logger
 from app.models.order import Order
 from app.core.post_creation.post_creation_manager import PostCreationManager
+from app.core.post_connection.post_connection_manager import PostConnectionManager
+from app.excpetions.post_connection_exception.post_connection_exception import PostConnectionException
 import traceback
 from app.filters.rate_limit_middleware_filter import RateLimitMiddleware
 
@@ -135,6 +137,8 @@ def error_handling(func):
             raise HTTPException(status_code=403, detail=str(e)) from e
         except DBConnectionException as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
+        except PostConnectionException as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
             raise HTTPException(status_code=500, detail="An unexpected error occurred.") from e
@@ -211,7 +215,7 @@ async def get_analytics(request: Request, data: RequestDataAnalytics):
 
 
 class PostInfo(BaseModel):
-    posts: Dict[str, Dict[str, str]]
+    posts: Dict[str, Tuple[str, str]]
 
 
 class RequestDataConnection(BaseModel):
@@ -223,9 +227,16 @@ class RequestDataConnection(BaseModel):
 @app.put("/api/connect_posts")
 @rate_limit_middleware.limiter.limit("10 per 5 minutes")
 @error_handling
-async def get_analytics(request: Request, data: RequestDataAnalytics):
+async def get_analytics(request: Request, data: RequestDataConnection):
     authenticate_user(
         token=data.account_info.token
     )
 
+    post_connection_manager = PostConnectionManager(
+        posts=data.post_info.posts,
+        user_id=data.account_info.user_id
+    )
 
+    response = post_connection_manager.connect_posts()
+
+    return response
