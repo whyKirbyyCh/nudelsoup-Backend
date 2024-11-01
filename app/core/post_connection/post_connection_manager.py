@@ -37,7 +37,7 @@ class PostConnectionManager:
         self._db_connection: DBConnection = DBConnection()
         self.connected_posts: Dict[str, str] = {}
 
-    def connect_posts(self) -> None:
+    def connect_posts(self) -> Dict[str, str]:
         """
         Handles all the different post connections.
 
@@ -68,7 +68,7 @@ class PostConnectionManager:
                         self.logger.info(f"Connected {self.connected_posts}")
 
                     else:
-                        raise PostConnectionException(f"Unknown site: {site}")
+                        continue
 
                 except (RedditPostConnectionException, IndiehackersPostConnectionException, TwitterPostConnectionException, LinkedinPostConnectionException, HackernewsPostConnectionException) as e:
                     self.logger.error(f"An error occurred while connecting the posts to Reddit: {e} \n{traceback.format_exc()}")
@@ -79,7 +79,10 @@ class PostConnectionManager:
                     raise PostConnectionException(f"An error occurred while connecting the posts: {e}")
 
             self.logger.info(f"Connected posts: {self.connected_posts}")
-            # self._copy_connected_to_live_posts(self.connected_posts=self.connected_posts)
+
+            # self._copy_connected_to_live_posts()
+
+            return {post_tuple[0]: post_tuple[0] in self.connected_posts for post_tuple in self.posts.values()}
 
         except PostConnectionException as e:
             self.logger.error(f"An error occurred while connecting the posts: {e} \n{traceback.format_exc()}")
