@@ -51,10 +51,12 @@ class IndiehackersPostConnection:
             cls.scraper.get(url)
             cls.scraper.implicitly_wait(10)
 
-            comments_feed = cls.scraper.find_element(By.XPATH, "//li[contains(@class, 'user-feed__option--selected') and .//span[contains(text(), 'Comments')]]")
+            outer_section = cls.scraper.find_element(By.XPATH, "//section[@id='ember42' and contains(@class, 'user-feed')]")
+            options_div = outer_section.find_element(By.CLASS_NAME, "user-feed__options")
+            comments_feed = options_div.find_element(By.XPATH, ".//li[contains(@class, 'user-feed__option') and contains(@class, 'user-feed__option--selected') and .//span[text()='Comments']]")
             comments_feed.click()
 
-            time.sleep(5)
+            cls.scraper.sleep(5)
 
             user_feed_section = cls.scraper.find_element(By.CSS_SELECTOR, "section.user-feed.ember-view")
             user_posts = user_feed_section.find_elements(By.CSS_SELECTOR, "div.user-feed__item.user-feed-item.user-feed-item--post.ember-view")[:10]
@@ -83,7 +85,7 @@ class IndiehackersPostConnection:
                 post_link = post_link_element.get_attribute("href")
                 connected_posts[post[0]] = post_link
 
-            #cls._save_connections(connected_posts)
+            # cls._save_connections(connected_posts)
             cls.logger.info(f"Connected posts to Indiehackers: {connected_posts}")
             return connected_posts
 

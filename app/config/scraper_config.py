@@ -1,4 +1,4 @@
-import undetected_chromedriver as uc
+from seleniumbase import Driver
 from selenium.webdriver.chrome.options import Options
 from dotenv import load_dotenv
 import os
@@ -12,12 +12,12 @@ class Scraper:
     logger = Logger().get_logger()
 
     @classmethod
-    def get_scraper(cls) -> uc.Chrome:
+    def get_scraper(cls) -> Driver:
         """
         Returns a configured undetected Chrome WebDriver instance.
 
         Returns:
-            uc.Chrome: An instance of undetected Chrome WebDriver.
+            Driver: An instance of SeleniumBase Chrome WebDriver.
 
         Raises:
             ScraperException: If the CHROME_PATH environment variable is not set.
@@ -26,20 +26,15 @@ class Scraper:
             load_dotenv(override=True)
 
             chrome_path = os.getenv("CHROME_PATH")
-
-            options = Options()
-            options.headless = False
-
-            if chrome_path:
-                options.binary_location = chrome_path
-
-            else:
+            if not chrome_path:
                 raise ScraperException("CHROME_PATH environment variable is not set.")
 
+            options = Options()
+            options.binary_location = chrome_path
             options.add_argument("--disable-blink-features=AutomationControlled")
 
-            driver = uc.Chrome(options=options)
-            driver.implicitly_wait(5)
+            driver = Driver(uc=True, headless=False)
+            driver.driver_options = options
 
             return driver
 
@@ -48,5 +43,5 @@ class Scraper:
             raise ScraperException(f"An error occurred while configuring the scraper: {e}")
 
         except Exception as e:
-            cls.logger.exception(f"An error occurred while configuring the scraper: {e}")
-            raise ScraperException(f"An error occurred while configuring the scraper: {e}")
+            cls.logger.exception(f"An unexpected error occurred while configuring the scraper: {e}")
+            raise ScraperException(f"An unexpected error occurred while configuring the scraper: {e}")

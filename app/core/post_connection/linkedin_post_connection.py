@@ -49,7 +49,7 @@ class LinkedInPostConnection:
 
         try:
             cls.scraper.get("https://www.linkedin.com/login?fromSignIn=true&trk=guest_homepage-basic_nav-header-signin")
-            time.sleep(5)
+            cls.scraper.sleep(5)
 
             email: str = os.getenv("LINKEDIN_CLIENT_ID")
             password: str = os.getenv("LINKEDIN_CLIENT_SECRET")
@@ -66,24 +66,24 @@ class LinkedInPostConnection:
             )
             sign_in_button.click()
 
-            time.sleep(5)
+            cls.scraper.sleep(5)
 
             user_link = LinkedinUserSiteRetrivalService.get_user_site()
             cls.scraper.get(user_link)
 
-            time.sleep(5)
+            cls.scraper.sleep(5)
 
             sort_button = WebDriverWait(cls.scraper, 10).until(
                 ec.element_to_be_clickable((By.ID, "sort-dropdown-trigger"))
             )
             sort_button.click()
-            time.sleep(1)
+            cls.scraper.sleep(1)
 
             sort_container = cls.scraper.find_element(By.CSS_SELECTOR, "ul.sort-dropdown__list")
             recent_button = sort_container.find_element(By.XPATH, ".//button[.//span[text()='Recent']]")
             recent_button.click()
 
-            time.sleep(5)
+            cls.scraper.sleep(5)
             sort_button.click()
 
             content_container = cls.scraper.find_element(By.CLASS_NAME, "scaffold-finite-scroll__content")
@@ -98,7 +98,7 @@ class LinkedInPostConnection:
                         ec.element_to_be_clickable((By.CSS_SELECTOR, "button.feed-shared-control-menu__trigger"))
                     )
                     post_menu_button.click()
-                    time.sleep(4)
+                    cls.scraper.sleep(4)
 
                     control_menu = WebDriverWait(cls.scraper, 10).until(
                         ec.visibility_of_element_located((By.CLASS_NAME, "feed-shared-control-menu__content"))
@@ -107,7 +107,8 @@ class LinkedInPostConnection:
                         ec.element_to_be_clickable((By.XPATH, ".//h5[text()='Copy link to post']"))
                     )
                     copy_link_button.click()
-                    time.sleep(1)
+
+                    cls.scraper.sleep(1)
 
                     post_link = pyperclip.paste()
 
