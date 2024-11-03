@@ -55,7 +55,6 @@ class TwitterPostConnection:
             posts_column = main_feed.find_element(By.CSS_SELECTOR, "section[role='region'].css-175oi2r")
 
             elements = posts_column.find_elements(By.CSS_SELECTOR, "div[data-testid='cellInnerDiv']")[:10]
-            cls.logger.info(f"Elements: {len(elements)}")
 
             most_similar_post: Optional[str] = None
             max_similarity: float = 0
@@ -151,7 +150,7 @@ class TwitterPostConnection:
                 cls.scraper.implicitly_wait(10)
 
                 password_field = WebDriverWait(cls.scraper, 10).until(
-                    ec.visibility_of_element_located((By.CSS_SELECTOR, "input[name='password']"))
+                    ec.visibility_of_element_located((By.CSS_SELECTOR, "input[name='password'][class^='r-30o5oe']"))
                 )
                 password_field.send_keys(os.getenv("TWITTER_CLIENT_SECRET"))
 
